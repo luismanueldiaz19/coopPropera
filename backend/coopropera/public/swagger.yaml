@@ -1,0 +1,228 @@
+openapi: 3.0.0
+info:
+  title: Gestión de Tareas Empresariales API
+  description: API REST para el sistema de gestión de tareas empresariales (coopropera).
+  version: 1.0.0
+servers:
+  - url: http://localhost/api/v1
+    description: Servidor de Desarrollo Local
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
+paths:
+  /login:
+    post:
+      summary: Iniciar sesión
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '200':
+          description: Inicio de sesión exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                  user:
+                    type: object
+        '401':
+          description: Credenciales incorrectas
+  /logout:
+    post:
+      summary: Cerrar sesión
+      responses:
+        '200':
+          description: Sesión cerrada exitosamente
+  /me:
+    get:
+      summary: Obtener usuario autenticado
+      responses:
+        '200':
+          description: Detalles del usuario actual
+  /tasks:
+    get:
+      summary: Listar tareas
+      description: Obtiene las tareas visibles para el usuario actual.
+      responses:
+        '200':
+          description: Lista de tareas
+    post:
+      summary: Crear tarea
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                priority:
+                  type: string
+                  enum: [low, medium, high, critical]
+                start_date:
+                  type: string
+                  format: date-time
+                end_date:
+                  type: string
+                  format: date-time
+                estimated_hours:
+                  type: number
+                assigned_to:
+                  type: integer
+                participants:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '201':
+          description: Tarea creada
+  /tasks/{id}:
+    get:
+      summary: Obtener detalles de una tarea
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalles de la tarea
+    put:
+      summary: Actualizar tarea
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tarea actualizada
+    delete:
+      summary: Eliminar tarea
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tarea eliminada
+  /tasks/{id}/assign:
+    post:
+      summary: Asignar tarea a un usuario
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - assigned_to
+              properties:
+                assigned_to:
+                  type: integer
+      responses:
+        '200':
+          description: Tarea asignada exitosamente
+  /tasks/{id}/close:
+    post:
+      summary: Marcar tarea como completada
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tarea cerrada exitosamente
+  /tasks/{id}/attachments:
+    post:
+      summary: Subir archivo adjunto a una tarea
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                attachment:
+                  type: string
+                  format: binary
+                  description: Archivo (máx 15MB, formatos pdf,jpg,jpeg,png)
+      responses:
+        '201':
+          description: Archivo adjunto subido
+  /tasks/{id}/reports:
+    post:
+      summary: Añadir reporte de trabajo a la tarea
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - report
+                - report_date
+              properties:
+                report:
+                  type: string
+                report_date:
+                  type: string
+                  format: date
+                hours_worked:
+                  type: number
+      responses:
+        '201':
+          description: Reporte añadido exitosamente
