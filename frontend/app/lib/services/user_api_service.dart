@@ -26,6 +26,15 @@ class UserApiService {
     throw Exception('Error al crear usuario: ${response.body}');
   }
 
+  Future<UserModel> updateUser(int id, Map<String, dynamic> data) async {
+    final response = await _api.put('/users/$id', data);
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      return UserModel.fromJson(responseData['data']);
+    }
+    throw Exception('Error al actualizar usuario: ${response.body}');
+  }
+
   Future<List<OccupationModel>> getOccupations() async {
     final response = await _api.get('/occupations');
     if (response.statusCode == 200) {

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class TaskReport extends Model
 {
-    protected $fillable = ['task_id', 'user_id', 'report', 'report_date', 'hours_worked'];
+    protected $fillable = ['task_id', 'user_id', 'report', 'report_date', 'hours_worked', 'start_time', 'end_time'];
 
     protected $casts = [
         'report_date' => 'date',

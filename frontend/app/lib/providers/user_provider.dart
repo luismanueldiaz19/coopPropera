@@ -6,7 +6,7 @@ import '../services/user_api_service.dart';
 
 class UserProvider with ChangeNotifier {
   final UserApiService _api = UserApiService();
-  
+
   List<UserModel> _users = [];
   List<OccupationModel> _occupations = [];
   List<RoleModel> _roles = [];
@@ -28,6 +28,27 @@ class UserProvider with ChangeNotifier {
       _users = await _api.getUsers();
     } catch (e) {
       _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateUser(int id, Map<String, dynamic> data) async {
+    _isLoading = true;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      final updatedUser = await _api.updateUser(id, data);
+      final index = _users.indexWhere((u) => u.id == id);
+      if (index != -1) {
+        _users[index] = updatedUser;
+      }
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();

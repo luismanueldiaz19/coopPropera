@@ -52,9 +52,10 @@ class _UserListScreenState extends State<UserListScreen> {
                 icon: const Icon(FluentIcons.add_friend),
                 label: const Text('Registrar Usuario'),
                 onPressed: () {
-                  Navigator.of(context).push(FluentPageRoute(
+                  showDialog(
+                    context: context,
                     builder: (context) => const UserCreateScreen(),
-                  ));
+                  );
                 },
               ),
             ),
@@ -82,17 +83,55 @@ class _UserListScreenState extends State<UserListScreen> {
       child: ListTile(
         leading: const Icon(FluentIcons.contact, size: 32),
         title: Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('@${user.username} - ${user.status.toUpperCase()}'),
-        trailing: user.isAdmin
-            ? Container(
+        subtitle: Row(
+          children: [
+            Text('@${user.username}'),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: user.status == 'active'
+                    ? Colors.green.withValues(alpha: 0.2)
+                    : Colors.red.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                user.status.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: user.status == 'active'
+                      ? Colors.green.darker
+                      : Colors.red.darker,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (user.isAdmin)
+              Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: const EdgeInsets.only(right: 8),
                 decoration: BoxDecoration(
                   color: Colors.blue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text('ADMIN', style: TextStyle(color: Colors.blue.darker, fontWeight: FontWeight.bold)),
-              )
-            : null,
+              ),
+            IconButton(
+              icon: Icon(FluentIcons.edit, color: Colors.blue),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => UserCreateScreen(user: user),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

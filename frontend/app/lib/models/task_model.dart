@@ -16,6 +16,7 @@ class TaskModel {
   final List<TaskReportModel>? reports;
   final List<dynamic>? attachments;
   final String createdAt;
+  final String? completedAt;
 
   TaskModel({
     required this.id,
@@ -32,6 +33,7 @@ class TaskModel {
     this.reports,
     this.attachments,
     required this.createdAt,
+    this.completedAt,
   });
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
@@ -52,6 +54,7 @@ class TaskModel {
           : null,
       attachments: json['attachments'],
       createdAt: json['created_at'] ?? '',
+      completedAt: json['completed_at'],
     );
   }
 }

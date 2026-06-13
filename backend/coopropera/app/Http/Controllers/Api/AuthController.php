@@ -71,4 +71,50 @@ class AuthController extends Controller
             ]
         ]);
     }
+
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'password' => 'nullable|string|min:6',
+            'current_password' => 'required|string',
+        ]);
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'La contraseña actual es incorrecta.'
+            ], 403);
+        }
+
+        if ($request->filled('first_name')) {
+            $user->first_name = $request->first_name;
+        }
+
+        if ($request->filled('last_name')) {
+            $user->last_name = $request->last_name;
+        }
+
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+
+        $user->save();
+
+        $user->load(['occupation', 'roles.permissions']);
+
+        return response()->json([
+            'message' => 'Perfil actualizado exitosamente',
+            'user' => [
+                'id' => $user->id,
+                'username' => $user->username,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'occupation' => $user->occupation,
+                'roles' => $user->roles,
+            ]
+        ]);
+    }
 }

@@ -69,10 +69,16 @@ class TaskController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        $task = $this->taskService->getTaskById($id);
-        $this->authorize('delete', $task);
-        $this->taskService->deleteTask($request->user(), $id);
-        return response()->json(['message' => 'Task deleted']);
+        $user = $request->user();
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('Administrador de Tareas') || $user->hasRole('Super Admin');
+        
+        if (!$isAdmin) {
+            return response()->json(['message' => 'No tienes permisos para eliminar tareas. Sólo los administradores pueden hacerlo.'], 403);
+        }
+
+        $this->taskService->deleteTask($user, $id);
+        
+        return response()->json(['message' => 'Tarea eliminada exitosamente']);
     }
 
     public function uploadAttachment(TaskAttachmentRequest $request, $id)
@@ -81,6 +87,27 @@ class TaskController extends Controller
         $this->authorize('view', $task); // Must be able to view task to upload
         $attachment = $this->taskService->addAttachment($request->user(), $id, $request->file('attachment'));
         return response()->json(['attachment' => $attachment], 201);
+    }
+
+    public function deleteAttachment(Request $request, $taskId, $attachmentId)
+    {
+        $task = $this->taskService->getTaskById($taskId);
+        
+        // Authorization: Solo admin, asignado o el que lo subió
+        $user = $request->user();
+        if (!$user->hasRole('Administrador de Tareas') && !$user->hasRole('Super Admin')) {
+            $isAssignee = $task->participants()->where('user_id', $user->id)->exists();
+            if (!$isAssignee) {
+                // Check if user is the uploader of the attachment
+                $attachment = \App\Models\TaskAttachment::findOrFail($attachmentId);
+                if ($attachment->uploaded_by != $user->id) {
+                    abort(403, 'Unauthorized action.');
+                }
+            }
+        }
+
+        $this->taskService->deleteAttachment($user, $taskId, $attachmentId);
+        return response()->json(['message' => 'Attachment deleted successfully']);
     }
 
     public function addReport(TaskReportRequest $request, $id)

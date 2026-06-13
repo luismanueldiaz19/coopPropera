@@ -23,6 +23,10 @@ class RepositoryServiceProvider extends ServiceProvider
             \App\Domain\Interfaces\AuditLogRepositoryInterface::class,
             \App\Infrastructure\Repositories\AuditLogRepository::class
         );
+        $this->app->bind(
+            \App\Domain\Interfaces\OccupationRepositoryInterface::class,
+            \App\Infrastructure\Repositories\OccupationRepository::class
+        );
     }
 
     /**

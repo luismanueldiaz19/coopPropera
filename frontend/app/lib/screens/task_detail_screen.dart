@@ -18,33 +18,61 @@ class TaskDetailScreen extends StatefulWidget {
 }
 
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
-  final Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
   DateTime? _startTime;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<TaskProvider>(context, listen: false);
+      final existingStart = provider.getTaskStartTime(widget.task.id);
+      if (existingStart != null) {
+        setState(() {
+          _startTime = existingStart;
+        });
+        _startLocalTick();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
-    _stopwatch.stop();
     super.dispose();
   }
 
-  void _startTimer() {
-    setState(() {
-      _startTime = DateTime.now();
-      _stopwatch.start();
-    });
+  void _startLocalTick() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() {});
     });
   }
 
-  void _stopTimer() async {
-    _timer?.cancel();
-    _stopwatch.stop();
+  void _startTimer() {
+    final now = DateTime.now();
+    setState(() {
+      _startTime = now;
+    });
+    Provider.of<TaskProvider>(
+      context,
+      listen: false,
+    ).setTaskStartTime(widget.task.id, now);
+    _startLocalTick();
+  }
 
+  Duration get _elapsed {
+    if (_startTime == null) return Duration.zero;
+    return DateTime.now().difference(_startTime!);
+  }
+
+  void _stopTimer() async {
+    // Congelar timer
+    _timer?.cancel();
+
+    final elapsed = _elapsed;
     final endTime = DateTime.now();
-    final elapsedMinutes = _stopwatch.elapsed.inSeconds / 60.0;
+    final elapsedMinutes = elapsed.inSeconds / 60.0;
     final elapsedHours = elapsedMinutes / 60.0;
 
     // Mostramos un dialog para capturar el reporte opcional
@@ -60,9 +88,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Tiempo registrado: ${_formatStopwatch(_stopwatch.elapsed)}',
-              ),
+              Text('Tiempo registrado: ${_formatStopwatch(elapsed)}'),
               const SizedBox(height: 16),
               InfoLabel(
                 label: 'Comentario (Opcional)',
@@ -97,15 +123,21 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         'end_time': endTime.toIso8601String(),
         if (reportText.isNotEmpty) 'report': reportText,
       });
-      // Reseteamos
-      _stopwatch.reset();
-      _startTime = null;
-      setState(() {});
+      provider.clearTaskStartTime(widget.task.id);
+      if (mounted)
+        setState(() {
+          _startTime = null;
+        });
+    } else if (result == false) {
+      // Descartó
+      provider.clearTaskStartTime(widget.task.id);
+      if (mounted)
+        setState(() {
+          _startTime = null;
+        });
     } else {
-      // Reanudar si descartó? No, por simplicidad si se descarta se resetea
-      _stopwatch.reset();
-      _startTime = null;
-      setState(() {});
+      // Canceló el diálogo (click afuera), reanudar
+      _startLocalTick();
     }
   }
 
@@ -117,8 +149,35 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     return '$hours:$minutes:$seconds';
   }
 
+  String _formatDateTime(String isoString) {
+    try {
+      final dt = DateTime.parse(isoString).toLocal();
+      final months = [
+        'Ene',
+        'Feb',
+        'Mar',
+        'Abr',
+        'May',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dic',
+      ];
+      return '${dt.day} ${months[dt.month - 1]}, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return isoString.split('T').first;
+    }
+  }
+
   void _manageParticipants(TaskModel currentTask) async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+    if (userProvider.users.isEmpty) {
+      await userProvider.fetchUsers();
+    }
 
     // extraemos IDs de los participantes actuales
     List<int> tempSelected =
@@ -257,7 +316,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
         final bool canUpdate =
             isAdmin || isCreator || isAssignee || isParticipant;
-        final bool canDelete = isAdmin || isCreator;
+        final bool canDelete = isAdmin;
 
         return ScaffoldPage(
           header: PageHeader(
@@ -269,62 +328,121 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 onPressed: () => Navigator.pop(context),
               ),
             ),
-            commandBar: canDelete
+            commandBar: canUpdate
                 ? CommandBar(
                     primaryItems: [
-                      CommandBarButton(
-                        icon: Icon(FluentIcons.delete, color: Colors.red),
-                        label: Text(
-                          'Eliminar Tarea',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (c) => ContentDialog(
-                              title: const Text('Confirmar Eliminación'),
-                              content: const Text(
-                                '¿Estás seguro de que deseas eliminar esta tarea permanentemente?',
-                              ),
-                              actions: [
-                                Button(
-                                  child: const Text('Cancelar'),
-                                  onPressed: () => Navigator.pop(c, false),
-                                ),
-                                FilledButton(
-                                  style: ButtonStyle(
-                                    backgroundColor: WidgetStateProperty.all(
-                                      Colors.red,
-                                    ),
-                                  ),
-                                  child: const Text('Eliminar'),
-                                  onPressed: () => Navigator.pop(c, true),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (confirm == true && mounted) {
-                            // Call delete method
-                            // For now, since TaskProvider.deleteTask isn't implemented, we'll just show a message.
-                            showDialog(
+                      if (currentTask.status != 'completed' &&
+                          currentTask.status != 'TERMINADA' &&
+                          currentTask.status != 'terminada' &&
+                          currentTask.status != 'COMPLETED')
+                        CommandBarButton(
+                          icon: Icon(
+                            FluentIcons.check_mark,
+                            color: Colors.green,
+                          ),
+                          label: Text(
+                            'Finalizar Tarea',
+                            style: TextStyle(color: Colors.green),
+                          ),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
                               context: context,
                               builder: (c) => ContentDialog(
-                                title: const Text('Aviso'),
+                                title: const Text('Confirmar Finalización'),
                                 content: const Text(
-                                  'Función de eliminación pendiente en Provider',
+                                  '¿Estás seguro de que deseas marcar esta tarea como terminada?',
                                 ),
                                 actions: [
                                   Button(
-                                    child: const Text('Cerrar'),
-                                    onPressed: () => Navigator.pop(c),
+                                    child: const Text('Cancelar'),
+                                    onPressed: () => Navigator.pop(c, false),
+                                  ),
+                                  FilledButton(
+                                    style: ButtonStyle(
+                                      backgroundColor: WidgetStateProperty.all(
+                                        Colors.green,
+                                      ),
+                                    ),
+                                    child: const Text('Finalizar'),
+                                    onPressed: () => Navigator.pop(c, true),
                                   ),
                                 ],
                               ),
                             );
-                          }
-                        },
-                      ),
+
+                            if (confirm == true && mounted) {
+                              final provider = Provider.of<TaskProvider>(
+                                context,
+                                listen: false,
+                              );
+                              bool success = await provider.closeTask(
+                                currentTask.id,
+                              );
+                              if (success && mounted) {
+                                showDialog(
+                                  context: context,
+                                  builder: (c) => ContentDialog(
+                                    title: const Text('Éxito'),
+                                    content: const Text(
+                                      'La tarea ha sido finalizada correctamente.',
+                                    ),
+                                    actions: [
+                                      Button(
+                                        child: const Text('Cerrar'),
+                                        onPressed: () => Navigator.pop(c),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      if (canDelete)
+                        CommandBarButton(
+                          icon: Icon(FluentIcons.delete, color: Colors.red),
+                          label: Text(
+                            'Eliminar Tarea',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (c) => ContentDialog(
+                                title: const Text('Confirmar Eliminación'),
+                                content: const Text(
+                                  '¿Estás seguro de que deseas eliminar esta tarea permanentemente?',
+                                ),
+                                actions: [
+                                  Button(
+                                    child: const Text('Cancelar'),
+                                    onPressed: () => Navigator.pop(c, false),
+                                  ),
+                                  FilledButton(
+                                    style: ButtonStyle(
+                                      backgroundColor: WidgetStateProperty.all(
+                                        Colors.red,
+                                      ),
+                                    ),
+                                    child: const Text('Eliminar'),
+                                    onPressed: () => Navigator.pop(c, true),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm == true && mounted) {
+                              final provider = Provider.of<TaskProvider>(
+                                context,
+                                listen: false,
+                              );
+                              bool success = await provider.deleteTask(currentTask.id);
+                              if (success && mounted) {
+                                Navigator.pop(context);
+                              }
+                            }
+                          },
+                        ),
                     ],
                   )
                 : null,
@@ -336,9 +454,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               children: [
                 Expanded(
                   flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                       Text(
                         currentTask.title,
                         style: const TextStyle(
@@ -445,64 +564,133 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: currentTask.attachments!.map((att) {
-                            return GestureDetector(
-                              onTap: () async {
-                                final path = att['file_path'];
-                                if (path != null) {
-                                  // Asumiendo que la API está en localhost:8000
-                                  final url = Uri.parse(
-                                    'http://localhost:8000/storage/$path',
-                                  );
-                                  try {
-                                    await launchUrl(
-                                      url,
-                                      mode: LaunchMode.externalApplication,
-                                    );
-                                  } catch (e) {
-                                    if (mounted) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (c) => ContentDialog(
-                                          title: const Text('Error'),
-                                          content: const Text(
-                                            'No se puede abrir el archivo.',
+                            return MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: Card(
+                                padding: const EdgeInsets.all(8),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () async {
+                                        final path = att['file_path'];
+                                        if (path != null) {
+                                          final url = Uri.parse(
+                                            'http://localhost:8000/storage/$path',
+                                          );
+                                          try {
+                                            await launchUrl(
+                                              url,
+                                              mode: LaunchMode
+                                                  .externalApplication,
+                                            );
+                                          } catch (e) {
+                                            if (mounted) {
+                                              showDialog(
+                                                context: context,
+                                                builder: (c) => ContentDialog(
+                                                  title: const Text('Error'),
+                                                  content: const Text(
+                                                    'No se puede abrir el archivo.',
+                                                  ),
+                                                  actions: [
+                                                    Button(
+                                                      child: const Text(
+                                                        'Cerrar',
+                                                      ),
+                                                      onPressed: () =>
+                                                          Navigator.pop(c),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        }
+                                      },
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            att['file_type']?.contains('pdf') ==
+                                                    true
+                                                ? FluentIcons.pdf
+                                                : FluentIcons.photo2,
                                           ),
-                                          actions: [
-                                            Button(
-                                              child: const Text('Cerrar'),
-                                              onPressed: () => Navigator.pop(c),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            att['file_name'] ?? 'Archivo',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              decoration:
+                                                  TextDecoration.underline,
+                                              color: Colors.blue,
                                             ),
-                                          ],
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              },
-                              child: MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: Card(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        att['file_type']?.contains('pdf') ==
-                                                true
-                                            ? FluentIcons.pdf
-                                            : FluentIcons.photo2,
+                                          ),
+                                        ],
                                       ),
+                                    ),
+                                    if (isAdmin ||
+                                        currentUserId ==
+                                            currentTask.assignedTo ||
+                                        att['uploaded_by'] ==
+                                            currentUserId) ...[
                                       const SizedBox(width: 8),
-                                      Text(
-                                        att['file_name'] ?? 'Archivo',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          decoration: TextDecoration.underline,
-                                          color: Colors.blue,
+                                      IconButton(
+                                        icon: Icon(
+                                          FluentIcons.delete,
+                                          color: Colors.red,
                                         ),
+                                        onPressed: () async {
+                                          await showDialog(
+                                            context: context,
+                                            builder: (dialogContext) => ContentDialog(
+                                              title: const Text(
+                                                'Eliminar Anexo',
+                                              ),
+                                              content: const Text(
+                                                '¿Estás seguro de que quieres eliminar este archivo?',
+                                              ),
+                                              actions: [
+                                                Button(
+                                                  child: const Text('Cancelar'),
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        dialogContext,
+                                                      ),
+                                                ),
+                                                FilledButton(
+                                                  style: ButtonStyle(
+                                                    backgroundColor:
+                                                        WidgetStateProperty.all(
+                                                          Colors.red,
+                                                        ),
+                                                  ),
+                                                  child: const Text('Eliminar'),
+                                                  onPressed: () async {
+                                                    Navigator.pop(
+                                                      dialogContext,
+                                                    ); // Close dialog
+                                                    final prov =
+                                                        Provider.of<
+                                                          TaskProvider
+                                                        >(
+                                                          context,
+                                                          listen: false,
+                                                        );
+                                                    await prov.deleteAttachment(
+                                                      currentTask.id,
+                                                      att['id'],
+                                                    );
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ],
-                                  ),
+                                  ],
                                 ),
                               ),
                             );
@@ -517,7 +705,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[120]!),
+                            border: Border.all(color: Colors.grey[120]),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,7 +721,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               Row(
                                 children: [
                                   Text(
-                                    _formatStopwatch(_stopwatch.elapsed),
+                                    _formatStopwatch(_elapsed),
                                     style: const TextStyle(
                                       fontSize: 32,
                                       fontFamily: 'Courier New',
@@ -541,7 +729,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 24),
-                                  if (!_stopwatch.isRunning)
+                                  if (_startTime == null)
                                     FilledButton(
                                       onPressed: _startTimer,
                                       child: const Row(
@@ -573,6 +761,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           ),
                         ),
                     ],
+                  ),
                   ),
                 ),
                 const SizedBox(width: 24),
@@ -634,13 +823,23 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                           ],
                                         ),
                                         const SizedBox(height: 4),
-                                        Text(
-                                          report.reportDate,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[100],
+                                        if (report.startTime != null &&
+                                            report.endTime != null)
+                                          Text(
+                                            '${_formatDateTime(report.startTime!)} - ${_formatDateTime(report.endTime!)}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[100],
+                                            ),
+                                          )
+                                        else
+                                          Text(
+                                            report.reportDate.split('T').first,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[100],
+                                            ),
                                           ),
-                                        ),
                                         if (report.report != null &&
                                             report.report!.isNotEmpty) ...[
                                           const SizedBox(height: 8),

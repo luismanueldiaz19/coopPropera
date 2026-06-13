@@ -31,6 +31,12 @@ class TaskService
     public function createTask($user, array $data)
     {
         $data['created_by'] = $user->id;
+        
+        // Si no se indica asignación, por defecto se asigna al mismo usuario que la creó
+        if (empty($data['assigned_to'])) {
+            $data['assigned_to'] = $user->id;
+        }
+
         $task = $this->taskRepo->create($data);
         $this->auditRepo->log($user->id, 'create', 'tasks', $task->id, null, $task->toArray());
 
@@ -79,9 +85,22 @@ class TaskService
     public function deleteTask($user, $taskId)
     {
         $task = $this->taskRepo->findById($taskId);
+        
+        // Borrar archivos físicos
+        foreach ($task->attachments as $attachment) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->file_path);
+            $attachment->forceDelete();
+        }
+
+        // Borrar relaciones
+        $task->participants()->delete();
+        $task->reports()->delete();
+
+        // Borrar la tarea definitivamente
         $oldValues = $task->toArray();
-        $this->taskRepo->delete($task);
-        $this->auditRepo->log($user->id, 'delete', 'tasks', $task->id, $oldValues, null);
+        $task->forceDelete();
+
+        $this->auditRepo->log($user->id, 'delete_task', 'tasks', $taskId, $oldValues, null);
     }
 
     public function addAttachment($user, $taskId, UploadedFile $file)
@@ -101,6 +120,26 @@ class TaskService
         $this->auditRepo->log($user->id, 'upload_attachment', 'tasks', $task->id, null, $attachment->toArray());
         
         return $attachment;
+    }
+
+    public function deleteAttachment($user, $taskId, $attachmentId)
+    {
+        $task = $this->taskRepo->findById($taskId);
+        $attachment = \App\Models\TaskAttachment::findOrFail($attachmentId);
+        
+        if ($attachment->task_id != $taskId) {
+            throw new \Exception("El anexo no pertenece a la tarea indicada");
+        }
+
+        // Delete from storage
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->file_path);
+        
+        $oldValues = $attachment->toArray();
+        $attachment->delete();
+        
+        $this->auditRepo->log($user->id, 'delete_attachment', 'tasks', $task->id, $oldValues, null);
+        
+        return true;
     }
 
     public function addReport($user, $taskId, array $data)

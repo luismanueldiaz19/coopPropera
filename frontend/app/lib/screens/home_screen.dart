@@ -4,7 +4,11 @@ import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import 'login_screen.dart';
 import 'task_list_screen.dart';
+import 'task_history_screen.dart';
 import 'user_list_screen.dart';
+import 'occupations_list_screen.dart';
+import 'profile_screen.dart';
+import 'dashboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +21,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   void _logout() async {
+    // Reset index to prevent out-of-bounds error when admin items are removed
+    setState(() => _currentIndex = 0);
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.logout();
     if (!mounted) return;
@@ -48,14 +55,17 @@ class _HomeScreenState extends State<HomeScreen> {
           PaneItem(
             icon: const Icon(FluentIcons.home),
             title: const Text('Inicio'),
-            body: const Center(
-              child: Text('Dashboard de Tareas (Próximamente)'),
-            ),
+            body: const DashboardScreen(),
           ),
           PaneItem(
             icon: const Icon(FluentIcons.task_list),
             title: const Text('Mis Tareas'),
             body: const TaskListScreen(),
+          ),
+          PaneItem(
+            icon: const Icon(FluentIcons.history),
+            title: const Text('Historial de Tareas'),
+            body: const TaskHistoryScreen(),
           ),
           if (user != null && user.isAdmin)
             PaneItem(
@@ -63,8 +73,19 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('Usuarios'),
               body: const UserListScreen(),
             ),
+          if (user != null && user.isAdmin)
+            PaneItem(
+              icon: const Icon(FluentIcons.suitcase),
+              title: const Text('Ocupaciones'),
+              body: const OccupationsListScreen(),
+            ),
         ],
         footerItems: [
+          PaneItem(
+            icon: const Icon(FluentIcons.contact_info),
+            title: const Text('Mi Perfil'),
+            body: const ProfileScreen(),
+          ),
           PaneItemAction(
             icon: Icon(
               themeProvider.themeMode == ThemeMode.dark

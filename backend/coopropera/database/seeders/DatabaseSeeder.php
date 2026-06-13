@@ -22,10 +22,19 @@ class DatabaseSeeder extends Seeder
         $createTask = Permission::create(['name' => 'tasks.create']);
         $editTask = Permission::create(['name' => 'tasks.edit']);
         $viewTask = Permission::create(['name' => 'tasks.view']);
+        $deleteTask = Permission::create(['name' => 'tasks.delete']);
 
-        // Crear rol admin
+        // Crear rol admin (Todos los permisos)
         $adminRole = Role::create(['name' => 'admin']);
-        $adminRole->permissions()->attach([$createTask->id, $editTask->id, $viewTask->id]);
+        $adminRole->permissions()->attach([$createTask->id, $editTask->id, $viewTask->id, $deleteTask->id]);
+
+        // Crear rol manager (Crea, edita y ve tareas)
+        $managerRole = Role::create(['name' => 'manager']);
+        $managerRole->permissions()->attach([$createTask->id, $editTask->id, $viewTask->id]);
+
+        // Crear rol empleado (Solo ve tareas)
+        $employeeRole = Role::create(['name' => 'employee']);
+        $employeeRole->permissions()->attach([$viewTask->id]);
 
         // Crear una ocupacion base
         $occupation = Occupation::create(['name' => 'Gerente']);

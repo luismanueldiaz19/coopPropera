@@ -8,6 +8,7 @@ import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/task_provider.dart';
 import 'providers/user_provider.dart';
+import 'providers/occupation_provider.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -18,6 +19,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => OccupationProvider()),
       ],
       child: const CoopProperaApp(),
     ),
@@ -76,7 +78,7 @@ class _CoopProperaAppState extends State<CoopProperaApp> {
       onPointerMove: _resetInactivityTimer,
       onPointerUp: _resetInactivityTimer,
       child: FluentApp(
-        title: 'CoopPropera',
+        title: 'Coop Propera',
         debugShowCheckedModeBanner: false,
         themeMode: themeProvider.themeMode,
         theme: AppTheme.lightTheme(),

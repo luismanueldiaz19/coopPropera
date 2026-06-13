@@ -69,6 +69,30 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> updateProfile(Map<String, dynamic> data) async {
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      final response = await _apiService.put('/profile', data);
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        _user = UserModel.fromJson(responseData['user']);
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = responseData['message'] ?? 'Error al actualizar el perfil';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Error de conexión. Inténtalo de nuevo.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _apiService.post('/logout', {});

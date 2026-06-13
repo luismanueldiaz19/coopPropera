@@ -40,7 +40,8 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
         'priority': _priority,
         if (_assignedTo != null) 'assigned_to': _assignedTo,
         if (_dueDate != null) 'end_date': _dueDate!.toIso8601String(),
-        if (_selectedParticipants.isNotEmpty) 'participants': _selectedParticipants,
+        if (_selectedParticipants.isNotEmpty)
+          'participants': _selectedParticipants,
       };
 
       final provider = Provider.of<TaskProvider>(context, listen: false);
@@ -74,13 +75,13 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
 
-    return ScaffoldPage(
-      header: const PageHeader(title: Text('Nueva Tarea')),
-      content: Padding(
-        padding: const EdgeInsets.all(24.0),
+    return ContentDialog(
+      title: const Text('Nueva Tarea'),
+      content: SingleChildScrollView(
         child: Form(
           key: _formKey,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               InfoLabel(
@@ -88,8 +89,9 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                 child: TextFormBox(
                   placeholder: 'Escribe un título breve',
                   validator: (text) {
-                    if (text == null || text.isEmpty)
+                    if (text == null || text.isEmpty) {
                       return 'El título es obligatorio';
+                    }
                     return null;
                   },
                   onSaved: (text) => _title = text!,
@@ -128,8 +130,13 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                   value: _assignedTo,
                   placeholder: const Text('Seleccionar usuario'),
                   items: [
-                    const ComboBoxItem(value: null, child: Text('Sin asignar (Para mí)')),
-                    ...userProvider.users.map((u) => ComboBoxItem(value: u.id, child: Text(u.fullName))),
+                    const ComboBoxItem(
+                      value: null,
+                      child: Text('Sin asignar (Para mí)'),
+                    ),
+                    ...userProvider.users.map(
+                      (u) => ComboBoxItem(value: u.id, child: Text(u.fullName)),
+                    ),
                   ],
                   onChanged: (value) {
                     setState(() => _assignedTo = value);
@@ -140,7 +147,9 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                 const SizedBox(height: 8),
                 Button(
                   onPressed: _showParticipantsDialog,
-                  child: Text('Seleccionar Participantes (${_selectedParticipants.length})'),
+                  child: Text(
+                    'Seleccionar Participantes (${_selectedParticipants.length})',
+                  ),
                 ),
               ],
               const SizedBox(height: 16),
@@ -150,33 +159,33 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                 selected: _dueDate,
                 onChanged: (time) => setState(() => _dueDate = time),
               ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  FilledButton(
-                    onPressed: _isSaving ? null : _submit,
-                    child: _isSaving
-                        ? const ProgressRing(strokeWidth: 2)
-                        : const Text('Crear Tarea'),
-                  ),
-                  const SizedBox(width: 16),
-                  Button(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancelar'),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
       ),
+      actions: [
+        Button(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: ProgressRing(strokeWidth: 3),
+                )
+              : const Text('Crear Tarea'),
+        ),
+      ],
     );
   }
 
   void _showParticipantsDialog() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     List<int> tempSelected = List.from(_selectedParticipants);
-    
+
     await showDialog(
       context: context,
       builder: (context) {
@@ -190,7 +199,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                   children: userProvider.users.map((u) {
                     // Evitamos que el asignado principal se seleccione doble, aunque el backend lo soportaría.
                     if (u.id == _assignedTo) return const SizedBox.shrink();
-                    
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4.0),
                       child: Checkbox(
@@ -210,7 +219,7 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                   }).toList(),
                 ),
               );
-            }
+            },
           ),
           actions: [
             Button(
@@ -224,9 +233,9 @@ class _TaskCreateScreenState extends State<TaskCreateScreen> {
                 Navigator.pop(context);
               },
             ),
-          ]
+          ],
         );
-      }
+      },
     );
   }
 }

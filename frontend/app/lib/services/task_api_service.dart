@@ -41,33 +41,54 @@ class TaskApiService {
   }
 
   Future<void> assignTask(int taskId, int userId) async {
-    final response = await _api.post('/tasks/$taskId/assign', {'user_id': userId});
+    final response = await _api.post('/tasks/$taskId/assign', {
+      'user_id': userId,
+    });
     if (response.statusCode != 200) {
       throw Exception('Error al asignar tarea');
     }
   }
 
+  Future<void> closeTask(int taskId) async {
+    final response = await _api.post('/tasks/$taskId/close', {});
+    if (response.statusCode != 200) {
+      throw Exception('Error al finalizar tarea: ${response.body}');
+    }
+  }
+
   Future<void> syncParticipants(int taskId, List<int> participantIds) async {
     final response = await _api.post('/tasks/$taskId/participants', {
-      'participants': participantIds
+      'participants': participantIds,
     });
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('Error al sincronizar participantes');
+      throw Exception('Error al actualizar participantes: ${response.body}');
+    }
+  }
+
+  Future<void> deleteTask(int taskId) async {
+    final response = await _api.delete('/tasks/$taskId');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Error al eliminar tarea: ${response.body}');
     }
   }
 
   Future<void> uploadAttachment(int taskId, String filePath) async {
-    final response = await _api.postMultipart('/tasks/$taskId/attachments', filePath);
+    final response = await _api.postMultipart(
+      '/tasks/$taskId/attachments',
+      filePath,
+    );
     if (response.statusCode != 200 && response.statusCode != 201) {
       final resBody = await response.stream.bytesToString();
       throw Exception('Error al subir archivo: $resBody');
     }
   }
 
-  Future<void> deleteTask(int taskId) async {
-    final response = await _api.delete('/tasks/$taskId');
+  Future<void> deleteAttachment(int taskId, int attachmentId) async {
+    final response = await _api.delete(
+      '/tasks/$taskId/attachments/$attachmentId',
+    );
     if (response.statusCode != 200) {
-      throw Exception('Error al eliminar tarea');
+      throw Exception('Error al eliminar anexo');
     }
   }
 }
