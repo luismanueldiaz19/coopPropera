@@ -3,7 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:8000/api/v1';
+  // static const String baseUrl = 'http://localhost:8000/api/v1'; // Entorno Local
+  static const String baseUrl =
+      'https://cooppropera.onrender.com/api/v1'; // Entorno Producción (Render)
   final _storage = const FlutterSecureStorage();
 
   Future<Map<String, String>> _getHeaders() async {
@@ -39,16 +41,21 @@ class ApiService {
     return await http.delete(url, headers: headers);
   }
 
-  Future<http.StreamedResponse> postMultipart(String endpoint, String filePath) async {
+  Future<http.StreamedResponse> postMultipart(
+    String endpoint,
+    String filePath,
+  ) async {
     final url = Uri.parse('$baseUrl$endpoint');
     final token = await _storage.read(key: 'auth_token');
-    
+
     final request = http.MultipartRequest('POST', url);
     request.headers['Accept'] = 'application/json';
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
-    
-    request.files.add(await http.MultipartFile.fromPath('attachment', filePath));
-    
+
+    request.files.add(
+      await http.MultipartFile.fromPath('attachment', filePath),
+    );
+
     return await request.send();
   }
 }
