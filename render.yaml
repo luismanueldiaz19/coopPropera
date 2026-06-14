@@ -4,6 +4,8 @@ services:
     env: docker
     plan: free
     region: ohio
+    # ESTO ES LA CLAVE: Le decimos a Render que el backend está en esta carpeta
+    rootDir: backend/coopropera
     dockerCommand: ./start.sh
     envVars:
       - key: APP_NAME
@@ -15,7 +17,6 @@ services:
       - key: APP_DEBUG
         value: "false"
       - key: APP_URL
-        # Puedes establecer esto después con la URL real de render o usar un custom domain
         value: "https://coopropera-backend.onrender.com" 
       - key: DB_CONNECTION
         value: pgsql
