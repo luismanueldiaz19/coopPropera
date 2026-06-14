@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: coopropera-backend
+    env: docker
+    plan: free
+    region: ohio
+    dockerCommand: ./start.sh
+    envVars:
+      - key: APP_NAME
+        value: "coopPropera"
+      - key: APP_ENV
+        value: "production"
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        # Puedes establecer esto después con la URL real de render o usar un custom domain
+        value: "https://coopropera-backend.onrender.com" 
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: coopropera-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: coopropera-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: coopropera-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: coopropera-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: coopropera-db
+          property: password
+      - key: SESSION_DRIVER
+        value: "cookie" 
+      - key: CACHE_STORE
+        value: "file" 
+      - key: QUEUE_CONNECTION
+        value: "sync"
+
+databases:
+  - name: coopropera-db
+    databaseName: coopropera
+    user: coopropera_user
+    plan: free
+    region: ohio
