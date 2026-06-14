@@ -12,5 +12,10 @@ php artisan migrate --force
 # Ajustar puerto de Apache para Render (se hace aquí en tiempo de ejecución, no en el Dockerfile)
 sed -i "s/80/${PORT:-80}/g" /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf
 
+# IMPORTANTE: Reasignar permisos a www-data. 
+# Como este script se ejecuta como root, los archivos de caché generados arriba pertenecen a root.
+# Apache corre como www-data, así que fallará (Error 500) si no le devolvemos los permisos.
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
 # Iniciar Apache en primer plano
 apache2-foreground
