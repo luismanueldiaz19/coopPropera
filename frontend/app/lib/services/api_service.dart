@@ -3,9 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:8000/api/v1'; // Entorno Local
-  // static const String baseUrl =
-  //     'https://cooppropera.onrender.com/api/v1'; // Entorno Producción (Render)
+  // static const String baseUrl = 'http://localhost:8000/api/v1'; // Entorno Local
+  static const String baseUrl =
+      'https://cooppropera.onrender.com/api/v1'; // Entorno Producción (Render)
   final _storage = const FlutterSecureStorage();
 
   Future<Map<String, String>> _getHeaders() async {
