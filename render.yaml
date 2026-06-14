@@ -4,9 +4,7 @@ services:
     env: docker
     plan: free
     region: ohio
-    # ESTO ES LA CLAVE: Le decimos a Render que el backend está en esta carpeta
-    rootDir: backend/coopropera
-    dockerCommand: ./start.sh
+    # Ejecutar desde la raíz del proyecto para que Docker vea el frontend y el backend
     envVars:
       - key: APP_NAME
         value: "coopPropera"
