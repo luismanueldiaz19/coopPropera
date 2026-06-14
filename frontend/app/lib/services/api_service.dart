@@ -3,9 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
-  // static const String baseUrl = 'http://localhost:8000/api/v1'; // Entorno Local
-  static const String baseUrl =
-      'https://cooppropera.onrender.com/api/v1'; // Entorno Producción (Render)
+  static const String baseUrl = 'http://localhost:8000/api/v1'; // Entorno Local
+  // static const String baseUrl =
+  //     'https://cooppropera.onrender.com/api/v1'; // Entorno Producción (Render)
   final _storage = const FlutterSecureStorage();
 
   Future<Map<String, String>> _getHeaders() async {
@@ -42,9 +42,11 @@ class ApiService {
   }
 
   Future<http.StreamedResponse> postMultipart(
-    String endpoint,
-    String filePath,
-  ) async {
+    String endpoint, {
+    String? filePath,
+    List<int>? fileBytes,
+    String? fileName,
+  }) async {
     final url = Uri.parse('$baseUrl$endpoint');
     final token = await _storage.read(key: 'auth_token');
 
@@ -52,9 +54,19 @@ class ApiService {
     request.headers['Accept'] = 'application/json';
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
 
-    request.files.add(
-      await http.MultipartFile.fromPath('attachment', filePath),
-    );
+    if (fileBytes != null && fileName != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'attachment',
+          fileBytes,
+          filename: fileName,
+        ),
+      );
+    } else if (filePath != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('attachment', filePath),
+      );
+    }
 
     return await request.send();
   }

@@ -245,15 +245,22 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+      withData: true,
     );
 
     if (result != null) {
-      String? filePath = result.files.single.path;
-      if (filePath != null && mounted) {
+      final file = result.files.single;
+      final String? filePath = file.path;
+      final List<int>? fileBytes = file.bytes?.toList();
+      final String? fileName = file.name;
+
+      if ((filePath != null || fileBytes != null) && mounted) {
         final provider = Provider.of<TaskProvider>(context, listen: false);
         bool success = await provider.uploadAttachment(
           currentTask.id,
-          filePath,
+          filePath: filePath,
+          fileBytes: fileBytes,
+          fileName: fileName,
         );
         if (success && mounted) {
           showDialog(
@@ -436,7 +443,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                 context,
                                 listen: false,
                               );
-                              bool success = await provider.deleteTask(currentTask.id);
+                              bool success = await provider.deleteTask(
+                                currentTask.id,
+                              );
                               if (success && mounted) {
                                 Navigator.pop(context);
                               }
@@ -458,310 +467,323 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                      Text(
-                        currentTask.title,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Estado: ${currentTask.status.toUpperCase()}',
-                        style: TextStyle(color: Colors.blue.darker),
-                      ),
-                      const SizedBox(height: 8),
-                      Text('Prioridad: ${currentTask.priority.toUpperCase()}'),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Descripción:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        currentTask.description ??
-                            'Sin descripción proporcionada',
-                      ),
-                      const SizedBox(height: 32),
-
-                      // PARTICIPANTES UI
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Participantes (Colaboradores)',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                        Text(
+                          currentTask.title,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                           ),
-                          if (canUpdate)
-                            Button(
-                              child: const Text('Gestionar'),
-                              onPressed: () => _manageParticipants(currentTask),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (currentTask.participants == null ||
-                          currentTask.participants!.isEmpty)
-                        const Text('No hay participantes adicionales.')
-                      else
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: currentTask.participants!.map((p) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Estado: ${currentTask.status.toUpperCase()}',
+                          style: TextStyle(color: Colors.blue.darker),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Prioridad: ${currentTask.priority.toUpperCase()}',
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Descripción:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          currentTask.description ??
+                              'Sin descripción proporcionada',
+                        ),
+                        const SizedBox(height: 32),
+
+                        // PARTICIPANTES UI
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Participantes (Colaboradores)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Colors.blue.withValues(alpha: 0.3),
+                            ),
+                            if (canUpdate)
+                              Button(
+                                child: const Text('Gestionar'),
+                                onPressed: () =>
+                                    _manageParticipants(currentTask),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (currentTask.participants == null ||
+                            currentTask.participants!.isEmpty)
+                          const Text('No hay participantes adicionales.')
+                        else
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: currentTask.participants!.map((p) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
                                 ),
-                              ),
-                              child: Text(
-                                p['full_name'] ?? p['username'] ?? 'Usuario',
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      const SizedBox(height: 32),
-
-                      // ATTACHMENTS UI
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Archivos Adjuntos',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Colors.blue.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  p['full_name'] ?? p['username'] ?? 'Usuario',
+                                ),
+                              );
+                            }).toList(),
                           ),
-                          if (canUpdate)
-                            Button(
-                              child: const Row(
-                                children: [
-                                  Icon(FluentIcons.add),
-                                  SizedBox(width: 8),
-                                  Text('Subir (PDF/Imagen)'),
-                                ],
+                        const SizedBox(height: 32),
+
+                        // ATTACHMENTS UI
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Archivos Adjuntos',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
-                              onPressed: () => _pickAndUploadFile(currentTask),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (currentTask.attachments == null ||
-                          currentTask.attachments!.isEmpty)
-                        const Text('No hay archivos adjuntos.')
-                      else
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: currentTask.attachments!.map((att) {
-                            return MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: Card(
-                                padding: const EdgeInsets.all(8),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                            if (canUpdate)
+                              Button(
+                                child: const Row(
                                   children: [
-                                    GestureDetector(
-                                      onTap: () async {
-                                        final path = att['file_path'];
-                                        if (path != null) {
-                                          final url = Uri.parse(
-                                            'http://localhost:8000/storage/$path',
-                                          );
-                                          try {
-                                            await launchUrl(
-                                              url,
-                                              mode: LaunchMode
-                                                  .externalApplication,
-                                            );
-                                          } catch (e) {
-                                            if (mounted) {
-                                              showDialog(
-                                                context: context,
-                                                builder: (c) => ContentDialog(
-                                                  title: const Text('Error'),
-                                                  content: const Text(
-                                                    'No se puede abrir el archivo.',
-                                                  ),
-                                                  actions: [
-                                                    Button(
-                                                      child: const Text(
-                                                        'Cerrar',
-                                                      ),
-                                                      onPressed: () =>
-                                                          Navigator.pop(c),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        }
-                                      },
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            att['file_type']?.contains('pdf') ==
-                                                    true
-                                                ? FluentIcons.pdf
-                                                : FluentIcons.photo2,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            att['file_name'] ?? 'Archivo',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              decoration:
-                                                  TextDecoration.underline,
-                                              color: Colors.blue,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (isAdmin ||
-                                        currentUserId ==
-                                            currentTask.assignedTo ||
-                                        att['uploaded_by'] ==
-                                            currentUserId) ...[
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        icon: Icon(
-                                          FluentIcons.delete,
-                                          color: Colors.red,
-                                        ),
-                                        onPressed: () async {
-                                          await showDialog(
-                                            context: context,
-                                            builder: (dialogContext) => ContentDialog(
-                                              title: const Text(
-                                                'Eliminar Anexo',
-                                              ),
-                                              content: const Text(
-                                                '¿Estás seguro de que quieres eliminar este archivo?',
-                                              ),
-                                              actions: [
-                                                Button(
-                                                  child: const Text('Cancelar'),
-                                                  onPressed: () =>
-                                                      Navigator.pop(
-                                                        dialogContext,
-                                                      ),
-                                                ),
-                                                FilledButton(
-                                                  style: ButtonStyle(
-                                                    backgroundColor:
-                                                        WidgetStateProperty.all(
-                                                          Colors.red,
-                                                        ),
-                                                  ),
-                                                  child: const Text('Eliminar'),
-                                                  onPressed: () async {
-                                                    Navigator.pop(
-                                                      dialogContext,
-                                                    ); // Close dialog
-                                                    final prov =
-                                                        Provider.of<
-                                                          TaskProvider
-                                                        >(
-                                                          context,
-                                                          listen: false,
-                                                        );
-                                                    await prov.deleteAttachment(
-                                                      currentTask.id,
-                                                      att['id'],
-                                                    );
-                                                  },
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
+                                    Icon(FluentIcons.add),
+                                    SizedBox(width: 8),
+                                    Text('Subir (PDF/Imagen)'),
                                   ],
                                 ),
+                                onPressed: () =>
+                                    _pickAndUploadFile(currentTask),
                               ),
-                            );
-                          }).toList(),
+                          ],
                         ),
-                      const SizedBox(height: 32),
-
-                      // CRONÓMETRO UI
-                      if (canUpdate)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[120]),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Registro de Trabajo',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  Text(
-                                    _formatStopwatch(_elapsed),
-                                    style: const TextStyle(
-                                      fontSize: 32,
-                                      fontFamily: 'Courier New',
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                        const SizedBox(height: 8),
+                        if (currentTask.attachments == null ||
+                            currentTask.attachments!.isEmpty)
+                          const Text('No hay archivos adjuntos.')
+                        else
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: currentTask.attachments!.map((att) {
+                              return MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: Card(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () async {
+                                          final path = att['file_path'];
+                                          if (path != null) {
+                                            final url = Uri.parse(
+                                              'http://localhost:8000/storage/$path',
+                                            );
+                                            try {
+                                              await launchUrl(
+                                                url,
+                                                mode: LaunchMode
+                                                    .externalApplication,
+                                              );
+                                            } catch (e) {
+                                              if (mounted) {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (c) => ContentDialog(
+                                                    title: const Text('Error'),
+                                                    content: const Text(
+                                                      'No se puede abrir el archivo.',
+                                                    ),
+                                                    actions: [
+                                                      Button(
+                                                        child: const Text(
+                                                          'Cerrar',
+                                                        ),
+                                                        onPressed: () =>
+                                                            Navigator.pop(c),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          }
+                                        },
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              att['file_type']?.contains(
+                                                        'pdf',
+                                                      ) ==
+                                                      true
+                                                  ? FluentIcons.pdf
+                                                  : FluentIcons.photo2,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              att['file_name'] ?? 'Archivo',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                decoration:
+                                                    TextDecoration.underline,
+                                                color: Colors.blue,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isAdmin ||
+                                          currentUserId ==
+                                              currentTask.assignedTo ||
+                                          att['uploaded_by'] ==
+                                              currentUserId) ...[
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: Icon(
+                                            FluentIcons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () async {
+                                            await showDialog(
+                                              context: context,
+                                              builder: (dialogContext) => ContentDialog(
+                                                title: const Text(
+                                                  'Eliminar Anexo',
+                                                ),
+                                                content: const Text(
+                                                  '¿Estás seguro de que quieres eliminar este archivo?',
+                                                ),
+                                                actions: [
+                                                  Button(
+                                                    child: const Text(
+                                                      'Cancelar',
+                                                    ),
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          dialogContext,
+                                                        ),
+                                                  ),
+                                                  FilledButton(
+                                                    style: ButtonStyle(
+                                                      backgroundColor:
+                                                          WidgetStateProperty.all(
+                                                            Colors.red,
+                                                          ),
+                                                    ),
+                                                    child: const Text(
+                                                      'Eliminar',
+                                                    ),
+                                                    onPressed: () async {
+                                                      Navigator.pop(
+                                                        dialogContext,
+                                                      ); // Close dialog
+                                                      final prov =
+                                                          Provider.of<
+                                                            TaskProvider
+                                                          >(
+                                                            context,
+                                                            listen: false,
+                                                          );
+                                                      await prov
+                                                          .deleteAttachment(
+                                                            currentTask.id,
+                                                            att['id'],
+                                                          );
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                  const SizedBox(width: 24),
-                                  if (_startTime == null)
-                                    FilledButton(
-                                      onPressed: _startTimer,
-                                      child: const Row(
-                                        children: [
-                                          Icon(FluentIcons.play),
-                                          SizedBox(width: 8),
-                                          Text('Iniciar Trabajo'),
-                                        ],
-                                      ),
-                                    )
-                                  else
-                                    FilledButton(
-                                      style: ButtonStyle(
-                                        backgroundColor:
-                                            WidgetStateProperty.all(Colors.red),
-                                      ),
-                                      onPressed: _stopTimer,
-                                      child: const Row(
-                                        children: [
-                                          Icon(FluentIcons.stop),
-                                          SizedBox(width: 8),
-                                          Text('Detener'),
-                                        ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        const SizedBox(height: 32),
+
+                        // CRONÓMETRO UI
+                        if (canUpdate)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[120]),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Registro de Trabajo',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Text(
+                                      _formatStopwatch(_elapsed),
+                                      style: const TextStyle(
+                                        fontSize: 32,
+                                        fontFamily: 'Courier New',
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                ],
-                              ),
-                            ],
+                                    const SizedBox(width: 24),
+                                    if (_startTime == null)
+                                      FilledButton(
+                                        onPressed: _startTimer,
+                                        child: const Row(
+                                          children: [
+                                            Icon(FluentIcons.play),
+                                            SizedBox(width: 8),
+                                            Text('Iniciar Trabajo'),
+                                          ],
+                                        ),
+                                      )
+                                    else
+                                      FilledButton(
+                                        style: ButtonStyle(
+                                          backgroundColor:
+                                              WidgetStateProperty.all(
+                                                Colors.red,
+                                              ),
+                                        ),
+                                        onPressed: _stopTimer,
+                                        child: const Row(
+                                          children: [
+                                            Icon(FluentIcons.stop),
+                                            SizedBox(width: 8),
+                                            Text('Detener'),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 24),

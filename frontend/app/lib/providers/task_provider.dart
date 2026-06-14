@@ -119,9 +119,9 @@ class TaskProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> uploadAttachment(int taskId, String filePath) async {
+  Future<bool> uploadAttachment(int taskId, {String? filePath, List<int>? fileBytes, String? fileName}) async {
     try {
-      await _api.uploadAttachment(taskId, filePath);
+      await _api.uploadAttachment(taskId, filePath: filePath, fileBytes: fileBytes, fileName: fileName);
       await fetchTasks();
       return true;
     } catch (e) {

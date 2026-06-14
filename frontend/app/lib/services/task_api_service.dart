@@ -72,10 +72,12 @@ class TaskApiService {
     }
   }
 
-  Future<void> uploadAttachment(int taskId, String filePath) async {
+  Future<void> uploadAttachment(int taskId, {String? filePath, List<int>? fileBytes, String? fileName}) async {
     final response = await _api.postMultipart(
       '/tasks/$taskId/attachments',
-      filePath,
+      filePath: filePath,
+      fileBytes: fileBytes,
+      fileName: fileName,
     );
     if (response.statusCode != 200 && response.statusCode != 201) {
       final resBody = await response.stream.bytesToString();
