@@ -252,7 +252,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       final file = result.files.single;
       final String? filePath = file.path;
       final List<int>? fileBytes = file.bytes?.toList();
-      final String? fileName = file.name;
+      final String fileName = file.name;
 
       if ((filePath != null || fileBytes != null) && mounted) {
         final provider = Provider.of<TaskProvider>(context, listen: false);
