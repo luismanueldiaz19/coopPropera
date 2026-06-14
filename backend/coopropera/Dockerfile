@@ -56,11 +56,8 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Exponer el puerto 80
+# Exponer el puerto por defecto
 EXPOSE 80
-
-# Usar el puerto proporcionado por Render (si Render inyecta un $PORT, ajustamos apache para que lo escuche)
-RUN sed -i 's/80/${PORT:-80}/g' /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf
 
 # Copiar script de inicio
 COPY start.sh /usr/local/bin/start.sh

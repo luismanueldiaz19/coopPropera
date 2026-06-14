@@ -9,5 +9,8 @@ php artisan view:cache
 # La bandera --force es necesaria en producción para evitar el prompt de confirmación
 php artisan migrate --force
 
+# Ajustar puerto de Apache para Render (se hace aquí en tiempo de ejecución, no en el Dockerfile)
+sed -i "s/80/${PORT:-80}/g" /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf
+
 # Iniciar Apache en primer plano
 apache2-foreground
