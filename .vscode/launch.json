@@ -2,6 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "CoopPropera (Windows)",
+            "request": "launch",
+            "type": "dart",
+            "cwd": "${workspaceFolder}/frontend/app",
+            "program": "${workspaceFolder}/frontend/app/lib/main.dart",
+            "args": [
+                "-d",
+                "windows"
+            ]
+        },
+        {
             "name": "CoopPropera (Chrome)",
             "request": "launch",
             "type": "dart",

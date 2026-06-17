@@ -7,6 +7,7 @@ import '../models/task_model.dart';
 import '../providers/task_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final TaskModel task;
@@ -588,8 +589,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                         onTap: () async {
                                           final path = att['file_path'];
                                           if (path != null) {
+                                            final baseUrlRoot = ApiService
+                                                .baseUrl
+                                                .replaceAll('/api/v1', '');
                                             final url = Uri.parse(
-                                              'http://localhost:8000/storage/$path',
+                                              '$baseUrlRoot/storage/$path',
                                             );
                                             try {
                                               await launchUrl(
@@ -811,10 +815,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                   final report = currentTask.reports![index];
                                   final hours = report.hoursWorked ?? 0.0;
 
-                                  // Calcular duración visual aproximada
-                                  final d = Duration(
-                                    seconds: (hours * 3600).round(),
-                                  );
+                                  Duration d;
+                                  if (report.startTime != null &&
+                                      report.endTime != null) {
+                                    final start = DateTime.tryParse(
+                                      report.startTime!,
+                                    );
+                                    final end = DateTime.tryParse(
+                                      report.endTime!,
+                                    );
+                                    if (start != null && end != null) {
+                                      d = end.difference(start);
+                                    } else {
+                                      d = Duration(
+                                        seconds: (hours * 3600).round(),
+                                      );
+                                    }
+                                  } else {
+                                    d = Duration(
+                                      seconds: (hours * 3600).round(),
+                                    );
+                                  }
                                   final timeString =
                                       '${d.inHours}h ${d.inMinutes.remainder(60)}m ${d.inSeconds.remainder(60)}s';
 
