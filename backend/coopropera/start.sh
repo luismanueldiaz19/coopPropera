@@ -8,7 +8,10 @@ php artisan view:cache
 # Ejecutar las migraciones a la base de datos sin seeders
 # La bandera --force es necesaria en producción para evitar el prompt de confirmación
 # php artisan migrate --force --seed
-php artisan migrate:fresh --force --seed
+php artisan migrate --force
+
+# Crear el enlace simbólico del storage para que los archivos subidos sean públicos
+php artisan storage:link
 
 # Ajustar puerto de Apache para Render (se hace aquí en tiempo de ejecución, no en el Dockerfile)
 sed -i "s/80/${PORT:-80}/g" /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf
