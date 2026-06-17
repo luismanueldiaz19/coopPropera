@@ -4,6 +4,12 @@ services:
     env: docker
     plan: free
     region: ohio
+    # OJO: Los discos persistentes requieren un plan de pago en Render (al menos Starter).
+    # Si la subida falla por el plan gratuito, tendrás que actualizar a 'starter' o hacerlo desde la web.
+    # disk:
+    #   name: storage-data
+    #   mountPath: /var/www/html/storage/app/public
+    #   sizeGB: 1
     # Ejecutar desde la raíz del proyecto para que Docker vea el frontend y el backend
     envVars:
       - key: APP_NAME
