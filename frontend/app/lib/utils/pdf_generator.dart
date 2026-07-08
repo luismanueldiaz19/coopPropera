@@ -1,8 +1,6 @@
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:url_launcher/url_launcher.dart';
+import 'package:printing/printing.dart';
 import '../models/task_model.dart';
 
 class PdfGenerator {
@@ -30,10 +28,14 @@ class PdfGenerator {
   }) async {
     final pdf = pw.Document();
 
+    final font = await PdfGoogleFonts.robotoRegular();
+    final fontBold = await PdfGoogleFonts.robotoBold();
+
     final pageTheme = pw.PageTheme(
       orientation: pw.PageOrientation.landscape,
       pageFormat: PdfPageFormat.a4.landscape,
       margin: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      theme: pw.ThemeData.withFont(base: font, bold: fontBold),
     );
 
     pdf.addPage(
@@ -51,24 +53,10 @@ class PdfGenerator {
       ),
     );
 
-    // Guardar el PDF en un archivo temporal
-    final output = await getTemporaryDirectory();
-    final file = File(
-      '${output.path}/reporte_tareas_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    await Printing.sharePdf(
+      bytes: await pdf.save(),
+      filename: 'reporte_tareas_${DateTime.now().millisecondsSinceEpoch}.pdf',
     );
-    await file.writeAsBytes(await pdf.save());
-
-    // Abrir el archivo generado
-    final url = Uri.file(file.path);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url);
-    } else {
-      if (Platform.isWindows) {
-        Process.run('explorer', [file.path]);
-      } else {
-        throw 'No se pudo abrir el archivo PDF en $url';
-      }
-    }
   }
 
   static pw.Widget _buildHeader({required String fecha, required String text}) {
@@ -146,7 +134,7 @@ class PdfGenerator {
         task.title.toUpperCase(),
         _limitarTexto(
           (task.description ?? 'Sin descripción').toUpperCase(),
-          40,
+          500,
         ),
         task.status.toUpperCase(),
         task.priority.toUpperCase(),
